@@ -1,7 +1,3 @@
-![build](https://github.com/Whyeasy/sonarcloud-exporter/workflows/build/badge.svg)
-![status-badge](https://goreportcard.com/badge/github.com/Whyeasy/sonarcloud-exporter)
-![Github go.mod Go version](https://img.shields.io/github/go-mod/go-version/Whyeasy/sonarcloud-exporter)
-
 # sonarcloud-exporter
 
 A Prometheus Exporter for SonarCloud
@@ -19,16 +15,14 @@ Currently this exporter retrieves the following metrics:
 
 ### Required
 
-Provide your SonarCloud organization; `--organization <string>` or as env variable `SC_ORGANIZATION`.
+Provide your SonarCloud organization; `-organization <string>` or as env variable `SC_ORGANIZATION`.
 
-Provide a SonarCloud Access Token to access the API; `--scToken <string>` or as env variable `SC_TOKEN`.
+Provide a SonarCloud Access Token to access the API; `-token <string>` or as env variable `SC_TOKEN`.
 
 ### Optional
 
-Change listening port of the exporter; `--listenAddress <string>` or as env variable `LISTEN_ADDRESS`. Default = `8080`
+Provide a list of metric names with comma separated; `-metrics <string>` or as env variable `SC_METRICS`.
 
-Change listening path of the exporter; `--listenPath <string>` or as env variable `LISTEN_PATH`. Default = `/metrics`
+Change listening port of the exporter; `-listenAddress <string>` or as env variable `SC_LISTEN_ADDRESS`. Default = `8080`
 
-## Helm
-
-You can find a helm chart to install the exporter [here](https://github.com/Whyeasy/helm-charts/tree/master/charts/sonarcloud-exporter).
+Change listening path of the exporter; `-listenPath <string>` or as env variable `SC_LISTEN_PATH`. Default = `/metrics`
