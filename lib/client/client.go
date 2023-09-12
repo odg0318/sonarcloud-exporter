@@ -10,13 +10,13 @@ import (
 	sonar "github.com/whyeasy/sonarcloud-exporter/lib/sonar"
 )
 
-//Stats struct is the list of expected to results to export.
+// Stats struct is the list of expected to results to export.
 type Stats struct {
 	Projects     *[]ProjectStats
 	Measurements *[]MeasurementsStats
 }
 
-//ProjectStats is the struct for SonarCloud projects data we want.
+// ProjectStats is the struct for SonarCloud projects data we want.
 type ProjectStats struct {
 	Organization string
 	Key          string
@@ -25,7 +25,7 @@ type ProjectStats struct {
 	LastAnalysis *time.Time
 }
 
-//MeasurementsStats is the struct for SonarCloud measurements we want.
+// MeasurementsStats is the struct for SonarCloud measurements we want.
 type MeasurementsStats struct {
 	Key       string
 	Metric    string
@@ -33,21 +33,20 @@ type MeasurementsStats struct {
 	BestValue string
 }
 
-//ExporterClient contains SonarCloud information for connecting
+// ExporterClient contains SonarCloud information for connecting
 type ExporterClient struct {
 	sqc *sonar.Client
 }
 
-//New returns a new Client connection to SonarCloud
+// New returns a new Client connection to SonarCloud
 func New(c internal.Config) *ExporterClient {
 	return &ExporterClient{
-		sqc: sonar.NewClient(c.Token, c.Organization),
+		sqc: sonar.NewClient(c.Token, c.Organization, c.Metrics),
 	}
 }
 
-//GetStats retrieves data from API to create metrics from.
+// GetStats retrieves data from API to create metrics from.
 func (c *ExporterClient) GetStats() (*Stats, error) {
-
 	projects, err := getProjects(c.sqc)
 	if err != nil {
 		return nil, err
@@ -78,11 +77,23 @@ func getProjects(c *sonar.Client) (*[]ProjectStats, error) {
 		}
 
 		for _, project := range projects.Components {
+			var lastAnalysis *time.Time
+
+			if len(project.LastAnalysisDate) > 0 {
+				parsedTime, err := time.Parse("2006-01-02T15:04:05-0700", project.LastAnalysisDate)
+				if err != nil {
+					return nil, err
+				}
+
+				lastAnalysis = &parsedTime
+			}
+
 			result = append(result, ProjectStats{
 				Name:         project.Name,
 				Qualifier:    project.Qualifier,
 				Key:          project.Key,
 				Organization: project.Organization,
+				LastAnalysis: lastAnalysis,
 			})
 		}
 

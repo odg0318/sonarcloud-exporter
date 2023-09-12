@@ -1,20 +1,29 @@
 package collector
 
 import (
+	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/whyeasy/sonarcloud-exporter/internal"
 	"github.com/whyeasy/sonarcloud-exporter/lib/client"
 )
 
-//Collector struct for holding Prometheus Desc and Exporter Client
+const (
+	METRIC_PREFIX = "sonarcloud_"
+)
+
+// Collector struct for holding Prometheus Desc and Exporter Client
 type Collector struct {
 	up     *prometheus.Desc
 	client *client.ExporterClient
 
 	projectInfo *prometheus.Desc
+
+	metrics map[string]*prometheus.Desc
 
 	linesOfCode     *prometheus.Desc
 	codeCoverage    *prometheus.Desc
@@ -23,34 +32,33 @@ type Collector struct {
 	codeSmells      *prometheus.Desc
 }
 
-//New creates a new Collecotor with Prometheus descriptors
-func New(c *client.ExporterClient) *Collector {
+// New creates a new Collecotor with Prometheus descriptors
+func New(c *client.ExporterClient, cfg internal.Config) *Collector {
 	log.Info("Creating collector")
+
+	metrics := make(map[string]*prometheus.Desc)
+
+	for _, metric := range strings.Split(cfg.Metrics, ",") {
+		metrics[metric] = prometheus.NewDesc(METRIC_PREFIX+metric, fmt.Sprintf("%s within a project in SonarCloud", metric), []string{"project_key"}, nil)
+	}
+
 	return &Collector{
-		up:     prometheus.NewDesc("sonarcloud_up", "Whether Sonarcloud scrape was successfull", nil, nil),
-		client: c,
-
-		projectInfo: prometheus.NewDesc("sonarcloud_project_info", "General information about projects", []string{"project_name", "project_qualifier", "project_key", "project_organization"}, nil),
-
-		linesOfCode:     prometheus.NewDesc("sonarcloud_lines_of_code", "Lines of code within a project in SonarCloud", []string{"project_key"}, nil),
-		codeCoverage:    prometheus.NewDesc("sonarcloud_code_coverage", "Code coverage within a project in SonarCloud", []string{"project_key"}, nil),
-		vulnerabilities: prometheus.NewDesc("sonarcloud_vulnerabilities", "Amount of vulnerabilities within a project in SonarCloud", []string{"project_key"}, nil),
-		bugs:            prometheus.NewDesc("sonarcloud_bugs", "Amount of bugs within a project in SonarCloud", []string{"project_key"}, nil),
-		codeSmells:      prometheus.NewDesc("sonarcloud_code_smells", "Amount of code smells within a project in SonarCloud", []string{"project_key"}, nil),
+		up:          prometheus.NewDesc("sonarcloud_up", "Whether Sonarcloud scrape was successfull", nil, nil),
+		client:      c,
+		projectInfo: prometheus.NewDesc(METRIC_PREFIX+"project_info", "General information about projects", []string{"project_name", "project_qualifier", "project_key", "project_organization"}, nil),
+		metrics:     metrics,
 	}
 }
 
-//Describe the metrics that are collected
+// Describe the metrics that are collected
 func (c *Collector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.up
 
 	ch <- c.projectInfo
 
-	ch <- c.linesOfCode
-	ch <- c.codeCoverage
-	ch <- c.bugs
-	ch <- c.vulnerabilities
-	ch <- c.codeSmells
+	for _, m := range c.metrics {
+		ch <- m
+	}
 }
 
 func (c *Collector) Collect(ch chan<- prometheus.Metric) {
@@ -72,7 +80,12 @@ func (c *Collector) Collect(ch chan<- prometheus.Metric) {
 
 func collectProjectInfo(c *Collector, ch chan<- prometheus.Metric, stats *client.Stats) {
 	for _, project := range *stats.Projects {
-		ch <- prometheus.MustNewConstMetric(c.projectInfo, prometheus.GaugeValue, 1, project.Name, project.Qualifier, project.Key, project.Organization)
+		value := 0.0
+		if project.LastAnalysis != nil {
+			value = float64(project.LastAnalysis.Unix())
+		}
+
+		ch <- prometheus.MustNewConstMetric(c.projectInfo, prometheus.GaugeValue, value, project.Name, project.Qualifier, project.Key, project.Organization)
 	}
 }
 
@@ -82,17 +95,8 @@ func collectMeasurements(c *Collector, ch chan<- prometheus.Metric, stats *clien
 		if err != nil {
 			log.Error(err)
 		}
-		switch {
-		case measurement.Metric == "ncloc":
-			ch <- prometheus.MustNewConstMetric(c.linesOfCode, prometheus.GaugeValue, value, measurement.Key)
-		case measurement.Metric == "coverage":
-			ch <- prometheus.MustNewConstMetric(c.codeCoverage, prometheus.GaugeValue, value, measurement.Key)
-		case measurement.Metric == "vulnerabilities":
-			ch <- prometheus.MustNewConstMetric(c.vulnerabilities, prometheus.GaugeValue, value, measurement.Key)
-		case measurement.Metric == "bugs":
-			ch <- prometheus.MustNewConstMetric(c.bugs, prometheus.GaugeValue, value, measurement.Key)
-		case measurement.Metric == "violations":
-			ch <- prometheus.MustNewConstMetric(c.codeSmells, prometheus.GaugeValue, value, measurement.Key)
-		}
+		metricDesc := c.metrics[measurement.Metric]
+
+		ch <- prometheus.MustNewConstMetric(metricDesc, prometheus.GaugeValue, value, measurement.Key)
 	}
 }

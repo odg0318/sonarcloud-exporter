@@ -18,10 +18,11 @@ import (
 var config internal.Config
 
 func init() {
-	flag.StringVar(&config.Token, "scToken", os.Getenv("SC_TOKEN"), "Token to access SonarCloud API")
-	flag.StringVar(&config.ListenAddress, "listenAddress", os.Getenv("LISTEN_ADDRESS"), "Port address of exporter to run on")
-	flag.StringVar(&config.ListenPath, "listenPath", os.Getenv("LISTEN_PATH"), "Path where metrics will be exposed")
+	flag.StringVar(&config.ListenAddress, "listenAddress", os.Getenv("SC_LISTEN_ADDRESS"), "Port address of exporter to run on")
+	flag.StringVar(&config.ListenPath, "listenPath", os.Getenv("SC_LISTEN_PATH"), "Path where metrics will be exposed")
 	flag.StringVar(&config.Organization, "organization", os.Getenv("SC_ORGANIZATION"), "Organization to query within SonarCloud")
+	flag.StringVar(&config.Token, "token", os.Getenv("SC_TOKEN"), "Token to access SonarCloud API")
+	flag.StringVar(&config.Metrics, "metrics", os.Getenv("SC_METRICS"), "Comma separated metric list (default: ncloc,coverage,vulnerabilities,bugs,violations)")
 }
 
 func main() {
@@ -34,7 +35,7 @@ func main() {
 	log.Info("Starting SonarCloud Exporter")
 
 	client := client.New(config)
-	coll := collector.New(client)
+	coll := collector.New(client, config)
 
 	prometheus.MustRegister(coll)
 
@@ -58,7 +59,7 @@ func main() {
 
 func parseConfig() error {
 	flag.Parse()
-	required := []string{"scToken"}
+	required := []string{"token", "organization"}
 	var err error
 	flag.VisitAll(func(f *flag.Flag) {
 		for _, r := range required {
@@ -74,6 +75,12 @@ func parseConfig() error {
 		}
 		if f.Name == "listenPath" && (f.Value.String() == "" || f.Value.String() == "0") {
 			err = f.Value.Set("/metrics")
+			if err != nil {
+				log.Error(err)
+			}
+		}
+		if f.Name == "metrics" && (f.Value.String() == "" || f.Value.String() == "0") {
+			err = f.Value.Set("ncloc,coverage,vulnerabilities,bugs,violations")
 			if err != nil {
 				log.Error(err)
 			}

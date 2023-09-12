@@ -8,7 +8,7 @@ import (
 	"strconv"
 )
 
-//ProjectResponse is the payload layout from SonarCloud
+// ProjectResponse is the payload layout from SonarCloud
 type ProjectResponse struct {
 	Paging struct {
 		PageIndex int `json:"pageIndex"`
@@ -26,9 +26,8 @@ type ProjectResponse struct {
 	} `json:"components"`
 }
 
-//ListProjects lists the current projects in the organization.
+// ListProjects lists the current projects in the organization.
 func (c *Client) ListProjects(opt *ListOptions) (*ProjectResponse, error) {
-
 	url := fmt.Sprintf("%s/projects/search?organization=%s&p=%s", c.sonarConnectionString, c.organization, strconv.Itoa(opt.Page))
 
 	req, err := http.NewRequest("GET", url, nil)

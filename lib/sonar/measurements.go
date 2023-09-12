@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-//MeasurementResponse is the payload layout from SonarCloud
+// MeasurementResponse is the payload layout from SonarCloud
 type MeasurementResponse struct {
 	Component struct {
 		ID          string `json:"id"`
@@ -23,10 +23,9 @@ type MeasurementResponse struct {
 	} `json:"component"`
 }
 
-//ProjectMeasurements retrieves the measurements we pass through about the projects.
+// ProjectMeasurements retrieves the measurements we pass through about the projects.
 func (c *Client) ProjectMeasurements(key string) (*MeasurementResponse, error) {
-
-	url := fmt.Sprintf("%s/measures/component?metricKeys=ncloc,coverage,vulnerabilities,bugs,violations&component=%s", c.sonarConnectionString, key)
+	url := fmt.Sprintf("%s/measures/component?metricKeys=%s&component=%s", c.sonarConnectionString, c.metrics, key)
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
