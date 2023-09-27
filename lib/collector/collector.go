@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
@@ -82,7 +83,8 @@ func collectProjectInfo(c *Collector, ch chan<- prometheus.Metric, stats *client
 	for _, project := range *stats.Projects {
 		value := 0.0
 		if project.LastAnalysis != nil {
-			value = float64(project.LastAnalysis.Unix())
+			elapsed := time.Now().Sub(*project.LastAnalysis)
+			value = elapsed.Seconds()
 		}
 
 		ch <- prometheus.MustNewConstMetric(c.projectInfo, prometheus.GaugeValue, value, project.Name, project.Qualifier, project.Key, project.Organization)
