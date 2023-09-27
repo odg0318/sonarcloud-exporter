@@ -26,4 +26,4 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: guri/sonarcloud-exporter:${{ github.ref_name }}
+          tags: guri/sonarcloud-exporter:latest,guri/sonarcloud-exporter:${{ github.ref_name }}
